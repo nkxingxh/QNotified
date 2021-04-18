@@ -66,11 +66,13 @@ public class LicenseStatus {
     }
 
     public static boolean isAsserted() {
-        return BuildConfig.DEBUG;
+        //return BuildConfig.DEBUG;
+        return true;
     }
 
     public static boolean isInsider() {
-        return BuildConfig.DEBUG;
+        //return BuildConfig.DEBUG;
+        return true;
     }
 
 }
