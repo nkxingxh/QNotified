@@ -147,7 +147,7 @@ private fun decodePercent(string: String): String {
 }
 
 fun showEulaDialog(activity: Activity) {
-    if (BuildConfig.DEBUG) {
+    if (BuildConfig.DEBUG || true) {
         activity.startActivity(Intent(activity, OmegaTestFuncActivity::class.java))
         return
     }
