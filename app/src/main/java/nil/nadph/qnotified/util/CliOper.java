@@ -50,8 +50,8 @@ public class CliOper {
         if (longAccount != -1) {
             AppCenter.setUserId(String.valueOf(longAccount));
         }
-        AppCenter.start(app, appCenterToken, Analytics.class, Crashes.class);
-        appCenterInit = true;
+        //AppCenter.start(app, appCenterToken, Analytics.class, Crashes.class);
+        //appCenterInit = true;
 
     }
 
