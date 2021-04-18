@@ -1,87 +1,76 @@
-/* QNotified - An Xposed module for QQ/TIM
- * Copyright (C) 2019-2020 xenonhydride@gmail.com
- * https://github.com/cinit/QNotified
+/*
+ * QNotified - An Xposed module for QQ/TIM
+ * Copyright (C) 2019-2021 dmca@ioctl.cc
+ * https://github.com/ferredoxin/QNotified
  *
- * This software is free software: you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
+ * This software is non-free but opensource software: you can redistribute it
+ * and/or modify it under the terms of the GNU Affero General Public License
  * as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
+ * version 3 of the License, or any later version and our eula as published
+ * by ferredoxin.
  *
  * This software is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
+ * Affero General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this software.  If not, see
- * <https://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU Affero General Public License
+ * and eula along with this software.  If not, see
+ * <https://www.gnu.org/licenses/>
+ * <https://github.com/ferredoxin/QNotified/blob/master/LICENSE.md>.
  */
 package nil.nadph.qnotified.util;
 
+import static nil.nadph.qnotified.util.Utils.PACKAGE_NAME_QQ;
+import static nil.nadph.qnotified.util.Utils.loge;
+
 import android.os.Parcelable;
 
-import com.tencent.mobileqq.app.QQAppInterface;
-
-import de.robv.android.xposed.XposedBridge;
-
-import java.lang.reflect.Field;
-
-import static nil.nadph.qnotified.util.Utils.log;
+import me.singleneuron.qn_kernel.data.HostInformationProviderKt;
+import me.singleneuron.util.QQVersion;
+import mqq.app.AppRuntime;
 
 @SuppressWarnings("rawtypes")
 public class Initiator {
 
     private static ClassLoader sHostClassLoader;
-    private static ClassLoader sPluginClassLoader;
+    private static ClassLoader sPluginParentClassLoader;
+    private static Class<?> kQQAppInterface = null;
+
+    private Initiator() {
+        throw new AssertionError("No instance for you!");
+    }
 
     public static void init(ClassLoader classLoader) {
-        if (classLoader == null) throw new NullPointerException("classLoader == null");
-        try {
-            sHostClassLoader = classLoader;
-            Field fParent = ClassLoader.class.getDeclaredField("parent");
-            fParent.setAccessible(true);
-            ClassLoader mine = Initiator.class.getClassLoader();
-            ClassLoader curr = (ClassLoader) fParent.get(mine);
-            if (curr == null) {
-                curr = XposedBridge.class.getClassLoader();
-            }
-            if (!curr.getClass().getName().equals(HybridClassLoader.class.getName())) {
-                fParent.set(mine, sPluginClassLoader = new HybridClassLoader(curr, classLoader));
-            }
-        } catch (Exception e) {
-            log(e);
-        }
+        sHostClassLoader = classLoader;
+        sPluginParentClassLoader = Initiator.class.getClassLoader();
     }
 
     public static ClassLoader getPluginClassLoader() {
-        return sPluginClassLoader;
-    }
-
-    @Deprecated
-    public static ClassLoader getClassLoader() {
-        return sPluginClassLoader;
+        return Initiator.class.getClassLoader();
     }
 
     public static ClassLoader getHostClassLoader() {
         return sHostClassLoader;
     }
 
-    @Nullable
     public static Class<?> load(String className) {
-        if (sPluginClassLoader == null || className == null || className.isEmpty()) {
+        if (sPluginParentClassLoader == null || className == null || className.isEmpty()) {
             return null;
         }
         className = className.replace('/', '.');
         if (className.endsWith(";")) {
-            if (className.charAt(0) == 'L')
+            if (className.charAt(0) == 'L') {
                 className = className.substring(1, className.length() - 1);
-            else className = className.substring(0, className.length() - 1);
+            } else {
+                className = className.substring(0, className.length() - 1);
+            }
         }
         if (className.startsWith(".")) {
-            className = Utils.PACKAGE_NAME_QQ + className;
+            className = PACKAGE_NAME_QQ + className;
         }
         try {
-            return sPluginClassLoader.loadClass(className);
+            return sPluginParentClassLoader.loadClass(className);
         } catch (Throwable e) {
             return null;
         }
@@ -89,11 +78,42 @@ public class Initiator {
 
     public static Class _QbossADImmersionBannerManager() {
         Class tmp;
-        Class mQbossADImmersionBannerManager = load("cooperation.vip.qqbanner.QbossADImmersionBannerManager");
+        Class mQbossADImmersionBannerManager = load(
+            "cooperation.vip.qqbanner.QbossADImmersionBannerManager");
         if (mQbossADImmersionBannerManager == null) {
             try {
                 tmp = load("cooperation.vip.qqbanner.QbossADImmersionBannerManager$1");
+                if (tmp == null) {
+                    tmp = load("cooperation.vip.qqbanner.QbossADImmersionBannerManager$2");
+                }
                 mQbossADImmersionBannerManager = tmp.getDeclaredField("this$0").getType();
+                return mQbossADImmersionBannerManager;
+            } catch (Exception ignored) {
+            }
+        }
+        mQbossADImmersionBannerManager = load(
+            "cooperation.vip.qqbanner.manager.VasADImmersionBannerManager");
+        if (mQbossADImmersionBannerManager == null) {
+            try {
+                tmp = load("cooperation.vip.qqbanner.manager.VasADImmersionBannerManager$1");
+                if (tmp == null) {
+                    tmp = load("cooperation.vip.qqbanner.manager.VasADImmersionBannerManager$2");
+                }
+                mQbossADImmersionBannerManager = tmp.getDeclaredField("this$0").getType();
+                return mQbossADImmersionBannerManager;
+            } catch (Exception ignored) {
+            }
+        }
+        mQbossADImmersionBannerManager = load(
+            "cooperation.vip.qqbanner.manager.VasADImmersionBannerManager");
+        if (mQbossADImmersionBannerManager == null) {
+            try {
+                tmp = load("cooperation.vip.qqbanner.manager.VasADImmersionBannerManager$1");
+                if (tmp == null) {
+                    tmp = load("cooperation.vip.qqbanner.manager.VasADImmersionBannerManager$2");
+                }
+                mQbossADImmersionBannerManager = tmp.getDeclaredField("this$0").getType();
+                return mQbossADImmersionBannerManager;
             } catch (Exception ignored) {
             }
         }
@@ -102,9 +122,12 @@ public class Initiator {
 
     public static Class _ConversationTitleBtnCtrl() {
         Class<?> ret, cref;
-        for (String clzName : new String[]{"com.tencent.mobileqq.activity.ConversationTitleBtnCtrl"}) {
+        for (String clzName : new String[]{
+            "com.tencent.mobileqq.activity.ConversationTitleBtnCtrl"}) {
             ret = load(clzName);
-            if (ret != null) return ret;
+            if (ret != null) {
+                return ret;
+            }
             for (int i : new int[]{1, 2, 4, 5, 6}) {
                 cref = load(clzName + "$" + i);
                 if (cref != null) {
@@ -115,7 +138,7 @@ public class Initiator {
                 }
             }
         }
-        log("Initiator/E class ConversationTitleBtnCtrl not found");
+        loge("Initiator/E class ConversationTitleBtnCtrl not found");
         return null;
     }
 
@@ -123,7 +146,9 @@ public class Initiator {
         Class<?> ret, cref;
         for (String clzName : new String[]{"com.tencent.mobileqq.app.ConfigHandler"}) {
             ret = load(clzName);
-            if (ret != null) return ret;
+            if (ret != null) {
+                return ret;
+            }
             for (int i : new int[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}) {
                 cref = load(clzName + "$" + i);
                 if (cref != null) {
@@ -134,23 +159,27 @@ public class Initiator {
                 }
             }
         }
-        log("Initiator/E class ConfigHandler not found");
+        loge("Initiator/E class ConfigHandler not found");
         return null;
     }
 
     public static Class _GdtMvViewController() {
         Class tmp;
-        Class mGdtMvViewController = load("com.tencent.gdtad.api.motivevideo.GdtMvViewController");
+        String clzName = "com.tencent.gdtad.api.motivevideo.GdtMvViewController";
+        if (HostInformationProviderKt.requireMinQQVersion(QQVersion.QQ_8_6_0)) {
+            clzName = "com.tencent.gdtad.basics.motivevideo.GdtMvViewController";
+        }
+        Class mGdtMvViewController = load(clzName);
         if (mGdtMvViewController == null) {
             try {
-                tmp = load("com.tencent.gdtad.api.motivevideo.GdtMvViewController$6");
+                tmp = load(clzName + "$6");
                 mGdtMvViewController = tmp.getDeclaredField("this$0").getType();
             } catch (Exception ignored) {
             }
         }
         if (mGdtMvViewController == null) {
             try {
-                tmp = load("com.tencent.gdtad.api.motivevideo.GdtMvViewController$8");
+                tmp = load(clzName + "$8");
                 mGdtMvViewController = tmp.getDeclaredField("this$0").getType();
             } catch (Exception ignored) {
             }
@@ -160,7 +189,8 @@ public class Initiator {
 
     public static Class _GivingHeartItemBuilder() {
         Class tmp;
-        Class mGivingHeartItemBuilder = load("com.tencent.mobileqq.activity.aio.item.GivingHeartItemBuilder");
+        Class mGivingHeartItemBuilder = load(
+            "com.tencent.mobileqq.activity.aio.item.GivingHeartItemBuilder");
         if (mGivingHeartItemBuilder == null) {
             try {
                 tmp = load("com.tencent.mobileqq.activity.aio.item.GivingHeartItemBuilder$10");
@@ -193,7 +223,8 @@ public class Initiator {
 
     public static Class _TroopEnterEffectController() {
         Class tmp;
-        Class mController = load("com.tencent.mobileqq.troop.enterEffect.TroopEnterEffect.Controller");
+        Class mController = load(
+            "com.tencent.mobileqq.troop.enterEffect.TroopEnterEffect.Controller");
         if (mController == null) {
             try {
                 tmp = load("com.tencent.mobileqq.troop.enterEffect.TroopEnterEffectController$3");
@@ -328,9 +359,12 @@ public class Initiator {
 
     public static Class _TroopFileUploadMgr() {
         Class<?> ret, cref;
-        for (String clzName : new String[]{"com.tencent.mobileqq.troop.filemanager.upload.TroopFileUploadMgr"}) {
+        for (String clzName : new String[]{
+            "com.tencent.mobileqq.troop.filemanager.upload.TroopFileUploadMgr"}) {
             ret = load(clzName);
-            if (ret != null) return ret;
+            if (ret != null) {
+                return ret;
+            }
             for (int i : new int[]{1, 2, 3, 4, 5, 6, 7, 8, 9}) {
                 cref = load(clzName + "$" + i);
                 if (cref != null) {
@@ -341,7 +375,7 @@ public class Initiator {
                 }
             }
         }
-        log("Initiator/E class TroopFileUploadMgr not found");
+        loge("Initiator/E class TroopFileUploadMgr not found");
         return null;
     }
 
@@ -351,7 +385,9 @@ public class Initiator {
         if (clazz == null) {
             try {
                 tmp = load("com.tencent.mobileqq.app.upgrade.UpgradeController$1");
-                if (tmp == null) tmp = load("com.tencent.mobileqq.upgrade.UpgradeController$1");
+                if (tmp == null) {
+                    tmp = load("com.tencent.mobileqq.upgrade.UpgradeController$1");
+                }
                 clazz = tmp.getDeclaredField("this$0").getType();
             } catch (Exception ignored) {
             }
@@ -359,7 +395,9 @@ public class Initiator {
         if (clazz == null) {
             try {
                 tmp = load("com.tencent.mobileqq.app.upgrade.UpgradeController$2");
-                if (tmp == null) tmp = load("com.tencent.mobileqq.upgrade.UpgradeController$2");
+                if (tmp == null) {
+                    tmp = load("com.tencent.mobileqq.upgrade.UpgradeController$2");
+                }
                 clazz = tmp.getDeclaredField("this$0").getType();
             } catch (Exception ignored) {
             }
@@ -406,7 +444,8 @@ public class Initiator {
     }
 
     public static Class _TroopGiftAnimationController() {
-        Class cl_TroopGiftAnimationController = load("com.tencent.mobileqq.troopgift.TroopGiftAnimationController");
+        Class cl_TroopGiftAnimationController = load(
+            "com.tencent.mobileqq.troopgift.TroopGiftAnimationController");
         if (cl_TroopGiftAnimationController == null) {
             Class cref = load("com.tencent.mobileqq.troopgift.TroopGiftAnimationController$1");
             try {
@@ -433,11 +472,16 @@ public class Initiator {
         Class director = load("com/tencent/mobileqq/startup/director/StartupDirector");
         if (director == null) {
             try {
-                director = load("com/tencent/mobileqq/startup/director/StartupDirector$1").getDeclaredField("this$0").getType();
+                director = load("com/tencent/mobileqq/startup/director/StartupDirector$1")
+                    .getDeclaredField("this$0").getType();
             } catch (NoSuchFieldException ignored) {
             }
         }
         return director;
+    }
+
+    public static Class _BaseQQMessageFacade() {
+        return load("com/tencent/imcore/message/BaseQQMessageFacade");
     }
 
     public static Class _QQMessageFacade() {
@@ -453,7 +497,42 @@ public class Initiator {
     }
 
     public static Class _BaseChatPie() {
-        return load("com.tencent.mobileqq.activity.BaseChatPie");
+        Class<?> clazz = load("com/tencent/mobileqq/activity/aio/core/BaseChatPie");
+        if (clazz == null) {
+            clazz = load("com.tencent.mobileqq.activity.BaseChatPie");
+        }
+        return clazz;
+    }
+
+    public static Class _TroopMemberInfo() {
+        Class<?> clazz = load("com.tencent.mobileqq.data.troop.TroopMemberInfo");
+        if (clazz == null) {
+            clazz = load("com.tencent.mobileqq.data.TroopMemberInfo");
+        }
+        return clazz;
+    }
+
+    public static Class _TroopInfo() {
+        Class<?> clazz = load("com.tencent.mobileqq.data.troop.TroopInfo");
+        if (clazz == null) {
+            clazz = load("com.tencent.mobileqq.data.TroopInfo");
+        }
+        return clazz;
+    }
+
+    public static Class _Conversation() {
+        Class<?> clazz = load("com/tencent/mobileqq/activity/home/Conversation");
+        if (clazz == null) {
+            clazz = load("com/tencent/mobileqq/activity/Conversation");
+        }
+        if (clazz == null) {
+            Class cref = load("com/tencent/mobileqq/activity/Conversation$5");
+            try {
+                clazz = cref.getDeclaredField("this$0").getType();
+            } catch (NoSuchFieldException ignored) {
+            }
+        }
+        return clazz;
     }
 
     public static Class _ChatMessage() {
@@ -464,15 +543,31 @@ public class Initiator {
         return load("com/tencent/mobileqq/data/MessageRecord");
     }
 
-    public static Class<QQAppInterface> _QQAppInterface() {
-        return (Class<QQAppInterface>) load("com/tencent/mobileqq/app/QQAppInterface");
+    public static Class<? extends AppRuntime> _QQAppInterface() {
+        if (kQQAppInterface == null) {
+            kQQAppInterface = load("com/tencent/mobileqq/app/QQAppInterface");
+            if (kQQAppInterface == null) {
+                Class<?> ref = load("com/tencent/mobileqq/app/QQAppInterface$1");
+                if (ref != null) {
+                    try {
+                        kQQAppInterface = ref.getDeclaredField("this$0").getType();
+                    } catch (Exception ignored) {
+                    }
+                }
+            }
+        }
+        return (Class<? extends AppRuntime>) kQQAppInterface;
     }
 
     public static Class<?> _BaseMessageManager() {
         Class<?> clz = load("com/tencent/mobileqq/app/message/BaseMessageManager");
-        if (clz != null) return clz;
+        if (clz != null) {
+            return clz;
+        }
         clz = load("com/tencent/imcore/message/BaseMessageManager");
-        if (clz != null) return clz;
+        if (clz != null) {
+            return clz;
+        }
         Class<?> ref = load("com/tencent/imcore/message/BaseMessageManager$1");
         if (ref != null) {
             try {
@@ -480,7 +575,9 @@ public class Initiator {
             } catch (Exception ignored) {
             }
         }
-        if (clz != null) return clz;
+        if (clz != null) {
+            return clz;
+        }
         ref = load("com/tencent/imcore/message/BaseMessageManager$2");
         if (ref != null) {
             try {
@@ -491,7 +588,6 @@ public class Initiator {
         return clz;
     }
 
-    @Nullable
     public static Class _EmoAddedAuthCallback() {
         try {
             Class clz = load("com/tencent/mobileqq/emosm/favroaming/EmoAddedAuthCallback");
@@ -515,13 +611,14 @@ public class Initiator {
         }
     }
 
-    @Nullable
     public static Class _C2CMessageProcessor() {
         Class<?> ret, cref;
         for (String clzName : new String[]{"com/tencent/mobileqq/app/message/C2CMessageProcessor",
-                "com/tencent/imcore/message/C2CMessageProcessor"}) {
+            "com/tencent/imcore/message/C2CMessageProcessor"}) {
             ret = load(clzName);
-            if (ret != null) return ret;
+            if (ret != null) {
+                return ret;
+            }
             for (int i : new int[]{4, 6, 1, 5, 7}) {
                 cref = load(clzName + "$" + i);
                 if (cref != null) {
@@ -532,7 +629,67 @@ public class Initiator {
                 }
             }
         }
-        log("Initiator/E class C2CMessageProcessor not found");
+        loge("Initiator/E class C2CMessageProcessor not found");
         return null;
+    }
+
+    public static Class _AllInOne() {
+        Class<?> clazz = load("com/tencent/mobileqq/activity/ProfileActivity$AllInOne");
+        if (clazz == null) {
+            clazz = load("com.tencent.mobileqq.profilecard.data.AllInOne");
+        }
+        return clazz;
+    }
+
+    public static Class _FriendProfileCardActivity() {
+        Class<?> clazz = load("com/tencent/mobileqq/activity/FriendProfileCardActivity");
+        if (clazz == null) {
+            clazz = load("com.tencent.mobileqq.profilecard.activity.FriendProfileCardActivity");
+        }
+        return clazz;
+    }
+
+    public static Class _ThemeUtil() {
+        Class<?> clazz = load("com/tencent/mobileqq/theme/ThemeUtil");
+        if (clazz == null) {
+            clazz = load("com.tencent.mobileqq.vas.theme.api.ThemeUtil");
+        }
+        return clazz;
+    }
+
+    public static Class _TroopMemberLevelView() {
+        Class<?> clazz = load("com.tencent.mobileqq.troop.troopMemberLevel.TroopMemberNewLevelView");
+        if (clazz == null) {
+            clazz = load("com.tencent.mobileqq.troop.widget.troopmemberlevel.TroopMemberNewLevelView");
+        }
+        return clazz;
+    }
+
+    public static Class _TroopChatPie() {
+        Class<?> clazz = load("com.tencent.mobileqq.activity.aio.core.TroopChatPie");
+        if (clazz == null) {
+            clazz = load("com.tencent.mobileqq.activity.aio.rebuild.TroopChatPie");
+        }
+        return clazz;
+    }
+
+    public static Class _ChatActivityFacade() {
+        return load("com/tencent/mobileqq/activity/ChatActivityFacade");
+    }
+
+    public static Class _BaseSessionInfo() {
+        Class<?> clazz = load("com/tencent/mobileqq/activity/aio/BaseSessionInfo");
+        if (clazz == null) {
+            clazz = load("com/tencent/mobileqq/activity/aio/SessionInfo");
+        }
+        return clazz;
+    }
+
+    public static Class _StickerInfo() {
+        Class<?> clazz = load("com.tencent.mobileqq.emoticon.StickerInfo");
+        if (clazz == null) {
+            clazz = load("com.tencent.mobileqq.emoticon.EmojiStickerManager.StickerInfo");
+        }
+        return clazz;
     }
 }

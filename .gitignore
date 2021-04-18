@@ -1,6 +1,3 @@
-# AIDE
-*.pro
-
 # Built application files
 *.apk
 *.ap_
@@ -74,3 +71,9 @@ fastlane/test_output
 fastlane/readme.md
 
 app/src/main/res/drawable/icon.png
+
+.settings
+.project
+.classpath
+app/signing.gradle
+.vscode

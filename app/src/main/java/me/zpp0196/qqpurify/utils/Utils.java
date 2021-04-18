@@ -3,21 +3,20 @@ package me.zpp0196.qqpurify.utils;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.pm.PackageInfo;
-import android.os.Build;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
-import nil.nadph.qnotified.SyncUtils;
-import org.json.JSONArray;
-import org.json.JSONException;
-
+import androidx.core.content.pm.PackageInfoCompat;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import nil.nadph.qnotified.SyncUtils;
+import org.json.JSONArray;
+import org.json.JSONException;
 
 /**
  * Created by zpp0196 on 2018/3/11.
@@ -37,15 +36,10 @@ public class Utils {
         }
     }
 
-    @SuppressWarnings("deprecation")
     public static long getAppVersionCode(Context context, String packageName) {
         try {
             PackageInfo pi = context.getPackageManager().getPackageInfo(packageName, 0);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                return pi.getLongVersionCode();
-            } else {
-                return pi.versionCode;
-            }
+            return PackageInfoCompat.getLongVersionCode(pi);
         } catch (Exception e) {
             e.printStackTrace();
             return -1;

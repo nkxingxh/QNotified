@@ -1,6 +1,24 @@
-//
-// Created by cinit on 2020/2/17.
-//
+/*
+ * QNotified - An Xposed module for QQ/TIM
+ * Copyright (C) 2019-2021 dmca@ioctl.cc
+ * https://github.com/ferredoxin/QNotified
+ *
+ * This software is non-free but opensource software: you can redistribute it
+ * and/or modify it under the terms of the GNU Affero General Public License
+ * as published by the Free Software Foundation; either
+ * version 3 of the License, or any later version and our eula as published
+ * by ferredoxin.
+ *
+ * This software is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * and eula along with this software.  If not, see
+ * <https://www.gnu.org/licenses/>
+ * <https://github.com/ferredoxin/QNotified/blob/master/LICENSE.md>.
+ */
 
 #include <errno.h>
 #include <dlfcn.h>
@@ -408,7 +426,7 @@ jboolean handleSendBatchMessages(JNIEnv *env, jclass clazz, jobject rt,
     jmethodID strValOf = env->GetStaticMethodID(cl_Str, "valueOf", "(J)Ljava/lang/String;");
     jclass cl_Facade = env->FindClass("nil/nadph/qnotified/bridge/ChatActivityFacade");
     jmethodID send = env->GetStaticMethodID(cl_Facade, "sendMessage",
-                                            "(Lcom/tencent/mobileqq/app/QQAppInterface;Landroid/content/Context;Landroid/os/Parcelable;Ljava/lang/String;)[J");
+                                            "(Lmqq/app/AppRuntime;Landroid/content/Context;Landroid/os/Parcelable;Ljava/lang/String;)[J");
     for (int i = 0; i < len; i++) {
         jstring struin = (jstring) (env->CallStaticObjectMethod(cl_Str, strValOf, uins[i]));
         jobject session = env->CallStaticObjectMethod(cl_SessionInfoImpl, createSessionInfo, struin,
@@ -448,6 +466,26 @@ jboolean handleSendCardMsg(JNIEnv *env, jclass clazz, jobject rt, jobject sessio
     }
     if (doGetBuildTimestamp(env, clazz) < 0)_exit(0);
     if (env->GetStringLength(msg) < 3)return false;
+
+    jclass utilsClass = env->FindClass("nil/nadph/qnotified/util/Utils");
+    jclass cardMsgListClass = env->FindClass("me/singleneuron/util/KotlinUtilsKt");
+    jmethodID getInstance = env->GetStaticMethodID(cardMsgListClass,"checkCardMsg", "(Ljava/lang/String;)Lme/singleneuron/data/CardMsgCheckResult;");
+    jobject result = env->CallStaticObjectMethod(cardMsgListClass,getInstance,msg);
+    jclass cardMsgCheckResultClass = env->FindClass("me/singleneuron/data/CardMsgCheckResult");
+    jmethodID toString = env->GetMethodID(cardMsgCheckResultClass,"toString", "()Ljava/lang/String;");
+    jmethodID getAccepted = env->GetMethodID(cardMsgCheckResultClass,"getAccept", "()Z");
+    auto resultString = (jstring) env->CallObjectMethod(result,toString);
+    jmethodID logd = env->GetStaticMethodID(utilsClass,"logd", "(Ljava/lang/String;)V");
+    env->CallStaticVoidMethod(utilsClass,logd,resultString);
+    bool boolean = env->CallBooleanMethod(result,getAccepted);
+    if (!boolean) {
+        jmethodID getReason = env->GetMethodID(cardMsgCheckResultClass,"getReason", "()Ljava/lang/String;");
+        auto reason = (jstring) env->CallObjectMethod(result,getReason);
+        jmethodID showErrorToastAnywhere = env->GetStaticMethodID(utilsClass,"showErrorToastAnywhere","(Ljava/lang/String;)V");
+        env->CallStaticVoidMethod(utilsClass,showErrorToastAnywhere,reason);
+        return true;
+    }
+
     jchar format;
     env->GetStringRegion(msg, 0, 1, &format);
     if (format == '<') {
@@ -460,7 +498,7 @@ jboolean handleSendCardMsg(JNIEnv *env, jclass clazz, jobject rt, jobject sessio
             env->ThrowNew(env->FindClass("java/lang/RuntimeException"), "404: TestStructMsg");
             return false;
         }
-        jclass cl_Utils = env->FindClass("nil/nadph/qnotified/util/Utils");
+        jclass cl_Utils = env->FindClass("nil/nadph/qnotified/util/ReflexUtil");
         cid = env->GetStaticMethodID(cl_Utils, "invoke_static_any",
                                      "(Ljava/lang/Class;[Ljava/lang/Object;)Ljava/lang/Object;");
         jobjectArray va = env->NewObjectArray(3, env->FindClass("java/lang/Object"), nullptr);
@@ -472,7 +510,7 @@ jboolean handleSendCardMsg(JNIEnv *env, jclass clazz, jobject rt, jobject sessio
         if (structMsg == nullptr)return false;
         jclass ChatActivityFacade = env->FindClass("nil/nadph/qnotified/bridge/ChatActivityFacade");
         jmethodID sendAbsStructMsg = env->GetStaticMethodID(ChatActivityFacade, "sendAbsStructMsg",
-                                                            "(Lcom/tencent/mobileqq/app/QQAppInterface;Landroid/os/Parcelable;Ljava/io/Externalizable;)V");
+                                                            "(Lmqq/app/AppRuntime;Landroid/os/Parcelable;Ljava/io/Externalizable;)V");
         env->CallStaticVoidMethod(ChatActivityFacade, sendAbsStructMsg, rt, session, structMsg);
         return !env->ExceptionCheck();
     } else if (format == '{') {
@@ -491,7 +529,7 @@ jboolean handleSendCardMsg(JNIEnv *env, jclass clazz, jobject rt, jobject sessio
         jclass ChatActivityFacade = env->FindClass("nil/nadph/qnotified/bridge/ChatActivityFacade");
         jmethodID sendArkAppMessage = env->GetStaticMethodID(ChatActivityFacade,
                                                              "sendArkAppMessage",
-                                                             "(Lcom/tencent/mobileqq/app/QQAppInterface;Landroid/os/Parcelable;Ljava/lang/Object;)Z");
+                                                             "(Lmqq/app/AppRuntime;Landroid/os/Parcelable;Ljava/lang/Object;)Z");
         return env->CallStaticBooleanMethod(ChatActivityFacade, sendArkAppMessage,
                                             rt, session, arkMsg);
     } else {
@@ -518,22 +556,22 @@ EXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
         __android_log_print(ANDROID_LOG_INFO, "QNdump", "register native method[0] failed!\n");
         return -1;
     }
-    jclass appInterface = env->FindClass("com/tencent/mobileqq/app/QQAppInterface");
+    jclass appInterface = env->FindClass("mqq/app/AppRuntime");
     if (appInterface == nullptr) {
         env->ExceptionClear();
         __android_log_print(ANDROID_LOG_WARN, "QNdump", "not seeming in host, skip native hooks");
     } else {
-        clazz = env->FindClass("nil/nadph/qnotified/hook/CardMsgHook");
+        clazz = env->FindClass("cc/ioctl/hook/CardMsgHook");
         lMethods[0].name = "ntSendCardMsg";
-        lMethods[0].signature = "(Lcom/tencent/mobileqq/app/QQAppInterface;Landroid/os/Parcelable;Ljava/lang/String;)Z";
+        lMethods[0].signature = "(Lmqq/app/AppRuntime;Landroid/os/Parcelable;Ljava/lang/String;)Z";
         lMethods[0].fnPtr = (void *) &handleSendCardMsg;
         if (env->RegisterNatives(clazz, lMethods, 1)) {
             __android_log_print(ANDROID_LOG_INFO, "QNdump", "register native method[1] failed!\n");
             return -1;
         }
-        clazz = env->FindClass("nil/nadph/qnotified/util/SendBatchMsg");
+        clazz = env->FindClass("cc/ioctl/util/SendBatchMsg");
         lMethods[0].name = "ntSendBatchMessages";
-        lMethods[0].signature = "(Lcom/tencent/mobileqq/app/QQAppInterface;Landroid/content/Context;Ljava/lang/String;[I[J)Z";
+        lMethods[0].signature = "(Lmqq/app/AppRuntime;Landroid/content/Context;Ljava/lang/String;[I[J)Z";
         lMethods[0].fnPtr = (void *) &handleSendBatchMessages;
         if (env->RegisterNatives(clazz, lMethods, 1)) {
             __android_log_print(ANDROID_LOG_INFO, "QNdump", "register native method[2] failed!\n");

@@ -1,5 +1,6 @@
 package me.zpp0196.qqpurify.fragment;
 
+import cc.ioctl.H;
 import me.zpp0196.qqpurify.fragment.base.AbstractPreferenceFragment;
 import nil.nadph.qnotified.R;
 import nil.nadph.qnotified.util.Utils;
@@ -13,18 +14,10 @@ public class AboutPreferenceFragment extends AbstractPreferenceFragment {
     @SuppressWarnings("ConstantConditions")
     protected void initPreferences() {
         super.initPreferences();
-        String qqVersion = Utils.getHostInfo(mActivity).versionName;
-
         findPreference("version_module").setSummary(Utils.QN_VERSION_NAME);
-        findPreference("version_qq").setSummary(qqVersion);
-//moved to LicenseActivity
-//        findPreference("licenses").setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
-//            @Override
-//            public boolean onPreferenceClick(Preference preference) {
-//                AboutPreferenceFragment.this.showLicensesDialog();
-//                return false;
-//            }
-//        });
+        findPreference("version_qq").setTitle(H.getAppName());
+        findPreference("version_qq")
+            .setSummary(String.format("%s (%d)", H.getVersionName(), H.getVersionCode()));
     }
 
     @Override

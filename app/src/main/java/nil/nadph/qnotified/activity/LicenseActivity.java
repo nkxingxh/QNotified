@@ -1,20 +1,23 @@
-/* QNotified - An Xposed module for QQ/TIM
- * Copyright (C) 2019-2020 xenonhydride@gmail.com
- * https://github.com/cinit/QNotified
+/*
+ * QNotified - An Xposed module for QQ/TIM
+ * Copyright (C) 2019-2021 dmca@ioctl.cc
+ * https://github.com/ferredoxin/QNotified
  *
- * This software is free software: you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
+ * This software is non-free but opensource software: you can redistribute it
+ * and/or modify it under the terms of the GNU Affero General Public License
  * as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
+ * version 3 of the License, or any later version and our eula as published
+ * by ferredoxin.
  *
  * This software is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
+ * Affero General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this software.  If not, see
- * <https://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU Affero General Public License
+ * and eula along with this software.  If not, see
+ * <https://www.gnu.org/licenses/>
+ * <https://github.com/ferredoxin/QNotified/blob/master/LICENSE.md>.
  */
 package nil.nadph.qnotified.activity;
 
@@ -33,10 +36,9 @@ import de.psdev.licensesdialog.licenses.MITLicense;
 import de.psdev.licensesdialog.model.Notice;
 import de.psdev.licensesdialog.model.Notices;
 import io.noties.markwon.Markwon;
+import java.util.List;
 import nil.nadph.qnotified.R;
 import nil.nadph.qnotified.ui.ResUtils;
-
-import java.util.List;
 
 public class LicenseActivity extends IphoneTitleBarActivityCompat implements View.OnClickListener {
 
@@ -45,14 +47,25 @@ public class LicenseActivity extends IphoneTitleBarActivityCompat implements Vie
         super.doOnCreate(bundle);
 
         final Notices notices = new Notices();
-//        Notice commonsIo = new Notice("Apache Commons IO", "https://github.com/apache/commons-io", "Copyright 2002-2019 The Apache Software Foundation", new ApacheSoftwareLicense20());
-        Notice flycoTabLayout = new Notice("FlycoTabLayout", "https://github.com/H07000223/FlycoTabLayout", "Copyright (c) 2015 H07000223", new MITLicense());
-        Notice markwon = new Notice("Markwon", "https://github.com/noties/Markwon", "Copyright 2017 Dimitry Ivanov (mail@dimitryivanov.ru)", new ApacheSoftwareLicense20());
-        Notice colorPicker = new Notice("ColorPicker", "https://github.com/jaredrummler/ColorPicker", "Copyright 2016 Jared Rummler\nCopyright 2015 Daniel Nilsson", new ApacheSoftwareLicense20());
-//        notices.addNotice(commonsIo);
-        notices.addNotice(new Notice("QQ净化", "https://github.com/zpp0196/QQPurify", "zpp0196", new ApacheSoftwareLicense20()));
-        notices.addNotice(new Notice("NoApplet", "https://github.com/Alcatraz323/noapplet", "Alcatraz323", new MITLicense()));
-        notices.addNotice(new Notice("原生音乐通知", "https://github.com/singleNeuron/XposedMusicNotify", "singleNeuron", new GnuLesserGeneralPublicLicense3()));
+        Notice flycoTabLayout = new Notice("FlycoTabLayout",
+            "https://github.com/H07000223/FlycoTabLayout", "Copyright (c) 2015 H07000223",
+            new MITLicense());
+        Notice markwon = new Notice("Markwon", "https://github.com/noties/Markwon",
+            "Copyright 2017 Dimitry Ivanov (mail@dimitryivanov.ru)", new ApacheSoftwareLicense20());
+        Notice colorPicker = new Notice("ColorPicker",
+            "https://github.com/jaredrummler/ColorPicker",
+            "Copyright 2016 Jared Rummler\nCopyright 2015 Daniel Nilsson",
+            new ApacheSoftwareLicense20());
+        notices.addNotice(new Notice("QQ净化", "https://github.com/zpp0196/QQPurify", "zpp0196",
+            new ApacheSoftwareLicense20()));
+        notices.addNotice(
+            new Notice("NoApplet", "https://github.com/Alcatraz323/noapplet", "Alcatraz323",
+                new MITLicense()));
+        notices.addNotice(new Notice("原生音乐通知", "https://github.com/singleNeuron/XposedMusicNotify",
+            "singleNeuron", new GnuLesserGeneralPublicLicense3()));
+        notices.addNotice(
+            new Notice("QQSpeciallyCare", "https://github.com/singleNeuron/QQSpeciallyCare",
+                "singleNeuron", new ApacheSoftwareLicense20()));
         notices.addNotice(flycoTabLayout);
         notices.addNotice(markwon);
         notices.addNotice(colorPicker);
@@ -95,8 +108,10 @@ public class LicenseActivity extends IphoneTitleBarActivityCompat implements Vie
                     title = convertView.findViewById(R.id.sLicenseItem_title);
                     licenseView = convertView.findViewById(R.id.sLicenseItem_licensePrev);
                 }
-                markwon.setMarkdown(title, "- " + notice.getName() + "  \n(<" + notice.getUrl() + ">)");
-                licenseView.setText(notice.getCopyright() + "\n\n" + notice.getLicense().getSummaryText(LicenseActivity.this));
+                markwon.setMarkdown(title,
+                    "- " + notice.getName() + "  \n(<" + notice.getUrl() + ">)");
+                licenseView.setText(notice.getCopyright() + "\n\n" + notice.getLicense()
+                    .getSummaryText(LicenseActivity.this));
                 return convertView;
             }
         };

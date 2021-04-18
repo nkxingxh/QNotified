@@ -1,3 +1,21 @@
+/* Copyright (C) 2019-2021 Cryolitia@gmail.com
+ * https://github.com/singleNeuron
+ *
+ * This software is free software: you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This software is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this software.  If not, see
+ * <https://www.gnu.org/licenses/>.
+ */
+
 package me.singleneuron.util
 
 import android.content.Context
@@ -5,12 +23,9 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
-import android.util.Log
 import androidx.annotation.IntDef
 import androidx.annotation.StringRes
-import com.topjohnwu.superuser.Shell
 import nil.nadph.qnotified.R
-import nil.nadph.qnotified.util.Utils
 import java.io.File
 
 object HookStatue {
@@ -20,18 +35,23 @@ object HookStatue {
     const val TAICHI_ACTIVE = 2
 
     fun isEnabled(): Boolean {
-        return Utils.getActiveModuleVersion() != null
-//        Log.d("singleNeuronUI", "模块未激活")
-//        return false
+        Math.sqrt(1.0)
+        Math.random()
+        Math.expm1(0.001)
+        //Just make the function longer,so that it will get hooked by Epic
+        return false
     }
 
     fun Context.getStatue(useSu: Boolean): Statue {
-        val isInstall = isInstall(this)
-        val getMagiskModule: BaseGetMagiskModule = if (useSu) {
+        val isInstall = IsInstall(this)
+        val getMagiskModule: BaseGetMagiskModule = BaseGetMagiskModule()
+        /*
+        if (useSu) {
             GetMagiskModule()
         } else {
             BaseGetMagiskModule()
         }
+         */
         val isExp = isExpModuleActive(this)
         return if (isEnabled()) {
             if (edxp) Statue.Edxp_Active else if (isExp == TAICHI_ACTIVE) Statue.taichi_magisk_active else if (isInstall.isEdxpManagerInstall || getMagiskModule.edxpModule) Statue.Edxp_Active else if (isInstall.isXposedInstall) Statue.xposed_active else Statue.xposed_active
@@ -106,7 +126,21 @@ object HookStatue {
         return isExp
     }
 
-    class isInstall {
+    class IsInstall constructor(val context: Context) {
+
+
+        var isEdxpManagerInstall = false
+        var isXposedInstall = false
+
+        init {
+            val packageManager = context.packageManager
+            val pid = PackageInstallDetect(packageManager)
+            isXposedInstall = pid.isPackageInstall(xposed_installer_packageName)
+            isEdxpManagerInstall =
+                pid.isPackageInstall(edxposed_installer_packageName) || pid.isPackageInstall(
+                    edxposed_manager_packageName
+                )
+        }
 
         companion object {
             const val xposed_installer_packageName = "de.robv.android.xposed.installer"
@@ -114,29 +148,11 @@ object HookStatue {
             const val edxposed_manager_packageName = "org.meowcat.edxposed.manager"
         }
 
-        private constructor() {}
-        constructor(context: Context) {
-            val packageManager = context.packageManager
-            val pid = PackageInstallDetect(packageManager)
-            isXposedInstall = pid.isPackageInstall(xposed_installer_packageName)
-            isEdxpManagerInstall = pid.isPackageInstall(edxposed_installer_packageName) || pid.isPackageInstall(edxposed_manager_packageName)
-        }
-
-        var isEdxpManagerInstall = false
-        var isXposedInstall = false
-
-        class PackageInstallDetect {
-
-            private var packageManager: PackageManager? = null
-
-            private constructor() {}
-            constructor(mPackageManager: PackageManager) {
-                packageManager = mPackageManager
-            }
+        class PackageInstallDetect constructor(private val packageManager: PackageManager) {
 
             fun isPackageInstall(packageName: String): Boolean {
                 return try {
-                    packageManager!!.getPackageInfo(packageName, PackageManager.GET_GIDS)
+                    packageManager.getPackageInfo(packageName, PackageManager.GET_GIDS)
                     true
                 } catch (e: Exception) {
                     //ignore
@@ -160,7 +176,8 @@ object HookStatue {
     @IntDef(TAICHI_NOT_INSTALL, TAICHI_NOT_ACTIVE, TAICHI_ACTIVE)
     annotation class Taichi_statue
 
-    class GetMagiskModule: BaseGetMagiskModule() {
+    /*
+    class GetMagiskModule : BaseGetMagiskModule() {
 
         companion object {
             const val moduleLocate = "/data/adb/modules"
@@ -170,12 +187,14 @@ object HookStatue {
             Shell.su("su")
             val result: Shell.Result =
                 Shell.su("ls $moduleLocate").exec()
-            val resultString: String = result.getOut().toString()
+            val resultString: String = result.out.toString()
             //Log.d("getMagiskModule", resultString);
             if (resultString.contains("edxp")) edxpModule = true
             if (resultString.contains("taichi")) taichiModule = true
         }
     }
+
+     */
 
     open class BaseGetMagiskModule {
         var taichiModule = false

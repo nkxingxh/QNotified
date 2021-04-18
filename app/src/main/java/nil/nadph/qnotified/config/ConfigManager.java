@@ -1,48 +1,77 @@
-/* QNotified - An Xposed module for QQ/TIM
- * Copyright (C) 2019-2020 xenonhydride@gmail.com
- * https://github.com/cinit/QNotified
+/*
+ * QNotified - An Xposed module for QQ/TIM
+ * Copyright (C) 2019-2021 dmca@ioctl.cc
+ * https://github.com/ferredoxin/QNotified
  *
- * This software is free software: you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
+ * This software is non-free but opensource software: you can redistribute it
+ * and/or modify it under the terms of the GNU Affero General Public License
  * as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
+ * version 3 of the License, or any later version and our eula as published
+ * by ferredoxin.
  *
  * This software is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
+ * Affero General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this software.  If not, see
- * <https://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU Affero General Public License
+ * and eula along with this software.  If not, see
+ * <https://www.gnu.org/licenses/>
+ * <https://github.com/ferredoxin/QNotified/blob/master/LICENSE.md>.
  */
 package nil.nadph.qnotified.config;
 
-import nil.nadph.qnotified.SyncUtils;
-import nil.nadph.qnotified.util.NonNull;
-import nil.nadph.qnotified.util.Nullable;
-import nil.nadph.qnotified.util.Utils;
+import static nil.nadph.qnotified.config.Table.TYPE_ARRAY;
+import static nil.nadph.qnotified.config.Table.TYPE_BOOL;
+import static nil.nadph.qnotified.config.Table.TYPE_BYTE;
+import static nil.nadph.qnotified.config.Table.TYPE_DOUBLE;
+import static nil.nadph.qnotified.config.Table.TYPE_EOF;
+import static nil.nadph.qnotified.config.Table.TYPE_FLOAT;
+import static nil.nadph.qnotified.config.Table.TYPE_INT;
+import static nil.nadph.qnotified.config.Table.TYPE_IRAW;
+import static nil.nadph.qnotified.config.Table.TYPE_IUTF8;
+import static nil.nadph.qnotified.config.Table.TYPE_LONG;
+import static nil.nadph.qnotified.config.Table.TYPE_SHORT;
+import static nil.nadph.qnotified.config.Table.TYPE_TABLE;
+import static nil.nadph.qnotified.config.Table.TYPE_VOID;
+import static nil.nadph.qnotified.config.Table.TYPE_WCHAR32;
+import static nil.nadph.qnotified.config.Table.VOID_INSTANCE;
+import static nil.nadph.qnotified.config.Table.readArray;
+import static nil.nadph.qnotified.config.Table.readIRaw;
+import static nil.nadph.qnotified.config.Table.readIStr;
+import static nil.nadph.qnotified.config.Table.readTable;
+import static nil.nadph.qnotified.config.Table.writeRecord;
+import static nil.nadph.qnotified.util.Utils.log;
 
-import java.io.*;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import me.singleneuron.qn_kernel.data.HostInformationProviderKt;
+import nil.nadph.qnotified.SyncUtils;
+import nil.nadph.qnotified.util.Utils;
 
-import static nil.nadph.qnotified.config.Table.*;
-import static nil.nadph.qnotified.util.Utils.log;
+public class ConfigManager implements SyncUtils.OnFileChangedListener, MultiConfigItem {
 
-public class ConfigManager implements SyncUtils.OnFileChangedListener {
     //DataOutputStream should be BIG_ENDIAN, as is.
     public static final int BYTE_ORDER_STUB = 0x12345678;
     private static ConfigManager sDefConfig;
     private static ConfigManager sCache;
     private final File file;
-    private ConcurrentHashMap<String, Object> config;
-    private boolean dirty;
     private final int mFileTypeId;
     private final long mTargetUin;
+    private ConcurrentHashMap<String, Object> config;
+    private boolean dirty;
 
     public ConfigManager(File f, int fileTypeId, long uin) throws IOException {
         file = f;
@@ -54,7 +83,10 @@ public class ConfigManager implements SyncUtils.OnFileChangedListener {
     public static ConfigManager getDefaultConfig() {
         try {
             if (sDefConfig == null) {
-                sDefConfig = new ConfigManager(new File(Utils.getApplication().getFilesDir().getAbsolutePath() + "/qnotified_config.dat"), SyncUtils.FILE_DEFAULT_CONFIG, 0);
+                sDefConfig = new ConfigManager(new File(
+                    HostInformationProviderKt.getHostInfo().getApplication().getFilesDir()
+                        .getAbsolutePath() + "/qnotified_config.dat"),
+                    SyncUtils.FILE_DEFAULT_CONFIG, 0);
                 SyncUtils.addOnFileChangedListener(sDefConfig);
             }
             return sDefConfig;
@@ -65,8 +97,11 @@ public class ConfigManager implements SyncUtils.OnFileChangedListener {
 
     public static ConfigManager getCache() {
         try {
-            if (sCache == null)
-                sCache = new ConfigManager(new File(Utils.getApplication().getFilesDir().getAbsolutePath() + "/qnotified_cache.dat"), SyncUtils.FILE_CACHE, 0);
+            if (sCache == null) {
+                sCache = new ConfigManager(new File(
+                    HostInformationProviderKt.getHostInfo().getApplication().getFilesDir()
+                        .getAbsolutePath() + "/qnotified_cache.dat"), SyncUtils.FILE_CACHE, 0);
+            }
             SyncUtils.addOnFileChangedListener(sCache);
             return sCache;
         } catch (IOException e) {
@@ -84,7 +119,9 @@ public class ConfigManager implements SyncUtils.OnFileChangedListener {
     }
 
     public void reinit() throws IOException {
-        if (!file.exists()) file.createNewFile();
+        if (!file.exists()) {
+            file.createNewFile();
+        }
         config = new ConcurrentHashMap<String, Object>();
         reload();
     }
@@ -95,21 +132,33 @@ public class ConfigManager implements SyncUtils.OnFileChangedListener {
 
     public Object getOrDefault(String key, Object def) {
         try {
-            if (dirty) reload();
+            if (dirty) {
+                reload();
+            }
         } catch (Exception ignored) {
         }
-        if (!config.containsKey(key)) config.put(key, def);
+        if (!config.containsKey(key)) {
+            return def;
+        }
         return config.get(key);
     }
 
     public boolean getBooleanOrFalse(String key) {
         try {
-            if (dirty) reload();
+            if (dirty) {
+                reload();
+            }
         } catch (Exception ignored) {
         }
-        if (!config.containsKey(key)) config.put(key, false);
+        if (!config.containsKey(key)) {
+            return false;
+        }
         try {
-            return ((Boolean) config.get(key)).booleanValue();
+            Boolean z = (Boolean) config.get(key);
+            if (z == null) {
+                return false;
+            }
+            return z;
         } catch (ClassCastException e) {
             return false;
         }
@@ -117,12 +166,20 @@ public class ConfigManager implements SyncUtils.OnFileChangedListener {
 
     public boolean getBooleanOrDefault(String key, boolean def) {
         try {
-            if (dirty) reload();
+            if (dirty) {
+                reload();
+            }
         } catch (Exception ignored) {
         }
-        if (!config.containsKey(key)) config.put(key, def);
+        if (!config.containsKey(key)) {
+            return def;
+        }
         try {
-            return ((Boolean) config.get(key)).booleanValue();
+            Boolean z = (Boolean) config.get(key);
+            if (z == null) {
+                return def;
+            }
+            return z;
         } catch (ClassCastException e) {
             return def;
         }
@@ -130,12 +187,20 @@ public class ConfigManager implements SyncUtils.OnFileChangedListener {
 
     public int getIntOrDefault(String key, int def) {
         try {
-            if (dirty) reload();
+            if (dirty) {
+                reload();
+            }
         } catch (Exception ignored) {
         }
-        if (!config.containsKey(key)) config.put(key, def);
+        if (!config.containsKey(key)) {
+            return def;
+        }
         try {
-            return ((Integer) config.get(key)).intValue();
+            Integer z = (Integer) config.get(key);
+            if (z == null) {
+                return def;
+            }
+            return z;
         } catch (ClassCastException e) {
             return def;
         }
@@ -143,7 +208,9 @@ public class ConfigManager implements SyncUtils.OnFileChangedListener {
 
     public String getString(String key) {
         try {
-            if (dirty) reload();
+            if (dirty) {
+                reload();
+            }
         } catch (Exception ignored) {
         }
         return (String) config.get(key);
@@ -151,18 +218,24 @@ public class ConfigManager implements SyncUtils.OnFileChangedListener {
 
     public String getStringOrDefault(String key, String defVal) {
         try {
-            if (dirty) reload();
+            if (dirty) {
+                reload();
+            }
         } catch (Exception ignored) {
         }
         String val = (String) config.get(key);
-        if (val == null) val = defVal;
+        if (val == null) {
+            val = defVal;
+        }
         return val;
     }
 
     @Nullable
     public Object getObject(@NonNull String key) {
         try {
-            if (dirty) reload();
+            if (dirty) {
+                reload();
+            }
         } catch (Exception ignored) {
         }
         return config.get(key);
@@ -170,7 +243,9 @@ public class ConfigManager implements SyncUtils.OnFileChangedListener {
 
     public void putString(String key, String val) {
         try {
-            if (dirty) reload();
+            if (dirty) {
+                reload();
+            }
         } catch (Exception ignored) {
         }
         config.put(key, val);
@@ -178,16 +253,20 @@ public class ConfigManager implements SyncUtils.OnFileChangedListener {
 
     public void putInt(String key, int val) {
         try {
-            if (dirty) reload();
+            if (dirty) {
+                reload();
+            }
         } catch (Exception ignored) {
         }
         config.put(key, val);
     }
 
-    @Deprecated
+    //@Deprecated
     public ConcurrentHashMap<String, Object> getAllConfig() {
         try {
-            if (dirty) reload();
+            if (dirty) {
+                reload();
+            }
         } catch (Exception ignored) {
         }
         return config;
@@ -200,7 +279,9 @@ public class ConfigManager implements SyncUtils.OnFileChangedListener {
         synchronized (this) {
             FileInputStream fin;
             fin = new FileInputStream(file);
-            if (fin.available() == 0) return;
+            if (fin.available() == 0) {
+                return;
+            }
             config.clear();
             DataInputStream in = new DataInputStream(fin);
             in.skip(4);//flag
@@ -208,17 +289,23 @@ public class ConfigManager implements SyncUtils.OnFileChangedListener {
             int file_size = in.readInt();
             readIRaw(in);//ignore
             byte[] md5 = new byte[16];
-            if (in.read(md5, 0, 16) < 16) throw new IOException("Failed to read md5");
+            if (in.read(md5, 0, 16) < 16) {
+                throw new IOException("Failed to read md5");
+            }
             String key;
             a:
             while (in.available() > 0) {
                 int _type = in.read();
-                if (_type < 0 || _type > 255)
+                if (_type < 0 || _type > 255) {
                     throw new IOException("Unexpected type:" + _type + ",version:" + endian);
+                }
                 key = readIStr(in);
                 switch ((byte) _type) {
                     case TYPE_VOID:
-                        log(new RuntimeException("ConcurrentHashMap/reload: replace null with " + VOID_INSTANCE + " in [key=\"" + key + "\",type=TYPE_VOID] at " + file.getAbsolutePath()));
+                        log(new RuntimeException(
+                            "ConcurrentHashMap/reload: replace null with " + VOID_INSTANCE
+                                + " in [key=\"" + key + "\",type=TYPE_VOID] at " + file
+                                .getAbsolutePath()));
                         config.put(key, VOID_INSTANCE);
                         break;
                     case TYPE_BYTE:
@@ -260,14 +347,15 @@ public class ConfigManager implements SyncUtils.OnFileChangedListener {
                     case TYPE_EOF:
                         break a;
                     default:
-                        throw new IOException("Unexpected type:" + _type + ",name:\"" + key + "\",version:" + endian);
+                        throw new IOException(
+                            "Unexpected type:" + _type + ",name:\"" + key + "\",version:" + endian);
                 }
             }
             dirty = false;
         }
     }
 
-    @Deprecated
+    //@Deprecated
     public void save() throws IOException {
         saveAndNotify(0);
     }
@@ -321,12 +409,20 @@ public class ConfigManager implements SyncUtils.OnFileChangedListener {
 
     public long getLongOrDefault(String key, long i) {
         try {
-            if (dirty) reload();
+            if (dirty) {
+                reload();
+            }
         } catch (Exception ignored) {
         }
-        if (!config.containsKey(key)) config.put(key, i);
+        if (!config.containsKey(key)) {
+            return i;
+        }
         try {
-            return ((Long) config.get(key)).longValue();
+            Long z = (Long) config.get(key);
+            if (z == null) {
+                return i;
+            }
+            return z;
         } catch (ClassCastException e) {
             return i;
         }
@@ -334,7 +430,9 @@ public class ConfigManager implements SyncUtils.OnFileChangedListener {
 
     public void putBoolean(String key, boolean v) {
         try {
-            if (dirty) reload();
+            if (dirty) {
+                reload();
+            }
         } catch (Exception ignored) {
         }
         config.put(key, v);
@@ -342,7 +440,9 @@ public class ConfigManager implements SyncUtils.OnFileChangedListener {
 
     public void putLong(String key, long v) {
         try {
-            if (dirty) reload();
+            if (dirty) {
+                reload();
+            }
         } catch (Exception ignored) {
         }
         config.put(key, v);
@@ -350,7 +450,9 @@ public class ConfigManager implements SyncUtils.OnFileChangedListener {
 
     public void putObject(@NonNull String key, Object v) {
         try {
-            if (dirty) reload();
+            if (dirty) {
+                reload();
+            }
         } catch (Exception ignored) {
         }
         config.put(key, v);
@@ -359,9 +461,73 @@ public class ConfigManager implements SyncUtils.OnFileChangedListener {
     @Nullable
     public Object remove(@NonNull String k) {
         try {
-            if (dirty) reload();
+            if (dirty) {
+                reload();
+            }
         } catch (Exception ignored) {
         }
         return config.remove(k);
+    }
+
+    @Nullable
+    public boolean containsKey(@NonNull String k) {
+        try {
+            if (dirty) {
+                reload();
+            }
+        } catch (Exception ignored) {
+        }
+        return config.containsKey(k);
+    }
+
+    @Override
+    public boolean isValid() {
+        return true;
+    }
+
+    @Override
+    public boolean hasConfig(String name) {
+        return containsKey(name);
+    }
+
+    @Override
+    public boolean getBooleanConfig(String name) {
+        return getBooleanOrDefault(name, false);
+    }
+
+    @Override
+    public void setBooleanConfig(String name, boolean val) {
+        putBoolean(name, val);
+    }
+
+    @Override
+    public int getIntConfig(String name) {
+        return getIntOrDefault(name, -1);
+    }
+
+    @Override
+    public void setIntConfig(String name, int val) {
+        putInt(name, val);
+    }
+
+    @Override
+    public String getStringConfig(String name) {
+        return getString(name);
+    }
+
+    @Override
+    public void setStringConfig(String name, String val) {
+        putString(name, val);
+    }
+
+    @Override
+    public boolean sync() {
+        try {
+            save();
+            return true;
+        } catch (IOException e) {
+            Utils.log(e);
+            return false;
+        }
     }
 }

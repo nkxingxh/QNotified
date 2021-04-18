@@ -1,15 +1,38 @@
+/*
+ * QNotified - An Xposed module for QQ/TIM
+ * Copyright (C) 2019-2021 dmca@ioctl.cc
+ * https://github.com/ferredoxin/QNotified
+ *
+ * This software is non-free but opensource software: you can redistribute it
+ * and/or modify it under the terms of the GNU Affero General Public License
+ * as published by the Free Software Foundation; either
+ * version 3 of the License, or any later version and our eula as published
+ * by ferredoxin.
+ *
+ * This software is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * and eula along with this software.  If not, see
+ * <https://www.gnu.org/licenses/>
+ * <https://github.com/ferredoxin/QNotified/blob/master/LICENSE.md>.
+ */
 package nil.nadph.qnotified.util;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.os.Build;
-import android.os.Environment;
-
+import com.tencent.mmkv.MMKV;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
+import nil.nadph.qnotified.BuildConfig;
 
 public class Natives {
+
     public static final int RTLD_LAZY = 0x00001;    /* Lazy function call binding.  */
     public static final int RTLD_NOW = 0x00002;    /* Immediate function call binding.  */
     public static final int RTLD_BINDING_MASK = 0x3;    /* Mask of binding time value.  */
@@ -78,6 +101,7 @@ public class Natives {
 
     public static native long call(long addr, long argv);
 
+    @SuppressWarnings("deprecation")
     @SuppressLint("UnsafeDynamicallyLoadedCode")
     public static void load(Context ctx) throws Throwable {
         try {
@@ -85,8 +109,33 @@ public class Natives {
             return;
         } catch (UnsatisfiedLinkError ignored) {
         }
+        System.load(extractNativeLibrary(ctx, "natives").getAbsolutePath());
+        extractNativeLibrary(ctx, "mmkv");
+        getpagesize();
+        File mmkvDir = new File(ctx.getFilesDir(), "qn_mmkv");
+        if (!mmkvDir.exists()) {
+            mmkvDir.mkdirs();
+        }
+        MMKV.initialize(mmkvDir.getAbsolutePath(), s -> {
+            try {
+                System.load(extractNativeLibrary(ctx, s).getAbsolutePath());
+            } catch (IOException e) {
+                throw (UnsatisfiedLinkError) new UnsatisfiedLinkError("extract lib failed: " + s)
+                    .initCause(e);
+            }
+        });
+        MMKV.mmkvWithID("global_config", MMKV.MULTI_PROCESS_MODE);
+        MMKV.mmkvWithID("global_cache", MMKV.MULTI_PROCESS_MODE);
+    }
+
+    /**
+     * Extract or update native library into "qn_dyn_lib" dir
+     *
+     * @param libraryName library name without "lib" or ".so", eg. "natives", "mmkv"
+     */
+    static File extractNativeLibrary(Context ctx, String libraryName) throws IOException {
         String abi = Build.CPU_ABI;
-        String soName = "libnatives_" + abi + "_" + Utils.QN_VERSION_NAME + ".so";
+        String soName = "lib" + libraryName + ".so." + BuildConfig.VERSION_CODE + "." + abi;
         File dir = new File(ctx.getFilesDir(), "qn_dyn_lib");
         if (!dir.isDirectory()) {
             if (dir.isFile()) {
@@ -96,11 +145,15 @@ public class Natives {
         }
         File soFile = new File(dir, soName);
         if (!soFile.exists()) {
-            InputStream in = Natives.class.getClassLoader().getResourceAsStream("lib/" + abi + "/libnatives.so");
-            if (in == null) throw new UnsatisfiedLinkError("Unsupported ABI: " + abi);
+            InputStream in = Natives.class.getClassLoader()
+                .getResourceAsStream("lib/" + abi + "/lib" + libraryName + ".so");
+            if (in == null) {
+                throw new UnsatisfiedLinkError("Unsupported ABI: " + abi);
+            }
             //clean up old files
             for (String name : dir.list()) {
-                if (name.startsWith("libnatives_")) {
+                if (name.startsWith("lib" + libraryName + "_")
+                    || name.startsWith("lib" + libraryName + ".so")) {
                     new File(dir, name).delete();
                 }
             }
@@ -116,6 +169,6 @@ public class Natives {
             fout.flush();
             fout.close();
         }
-        System.load(soFile.getAbsolutePath());
+        return soFile;
     }
 }

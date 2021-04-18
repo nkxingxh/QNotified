@@ -1,13 +1,10 @@
 package me.zpp0196.qqpurify.activity;
 
-import android.app.Activity;
 import android.content.Context;
-import android.content.Intent;
 import android.content.res.TypedArray;
 import android.os.Bundle;
 import android.view.KeyEvent;
 import android.widget.TextView;
-import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.Toolbar;
@@ -17,26 +14,38 @@ import androidx.fragment.app.FragmentPagerAdapter;
 import androidx.viewpager.widget.ViewPager;
 import com.flyco.tablayout.SlidingTabLayout;
 import com.flyco.tablayout.listener.OnTabSelectListener;
-import me.zpp0196.qqpurify.fragment.*;
+import java.util.ArrayList;
+import java.util.List;
+import me.zpp0196.qqpurify.fragment.AboutPreferenceFragment;
+import me.zpp0196.qqpurify.fragment.ChatPreferenceFragment;
+import me.zpp0196.qqpurify.fragment.ExtensionPreferenceFragment;
+import me.zpp0196.qqpurify.fragment.MainuiPreferenceFragment;
+import me.zpp0196.qqpurify.fragment.ReadmeFragment;
+import me.zpp0196.qqpurify.fragment.SettingPreferenceFragment;
+import me.zpp0196.qqpurify.fragment.SidebarPreferenceFragment;
+import me.zpp0196.qqpurify.fragment.TroopPreferenceFragment;
 import me.zpp0196.qqpurify.utils.Constants;
-import me.zpp0196.qqpurify.utils.Setting;
 import me.zpp0196.qqpurify.utils.ThemeUtils;
 import nil.nadph.qnotified.R;
 import nil.nadph.qnotified.activity.AppCompatTransferActivity;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * Created by zpp0196 on 2019/5/15.
  */
-public class MainActivity extends AppCompatTransferActivity implements ViewPager.OnPageChangeListener,
-        OnTabSelectListener, Constants {
-
-    private TextView mTitleTextView;
+public class MainActivity extends AppCompatTransferActivity implements
+    ViewPager.OnPageChangeListener,
+    OnTabSelectListener, Constants {
 
     public List<TabFragment> mRefreshedFragment = new ArrayList<>();
+    private TextView mTitleTextView;
     private List<TabFragment> mFragments = new ArrayList<>();
+
+    public static boolean hasAppCompatAttr(Context ctx) {
+        TypedArray a = ctx.obtainStyledAttributes(R.styleable.AppCompatTheme);
+        boolean hasVal = a.hasValue(R.styleable.AppCompatTheme_windowActionBar);
+        a.recycle();
+        return hasVal;
+    }
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -46,34 +55,15 @@ public class MainActivity extends AppCompatTransferActivity implements ViewPager
         setContentView(R.layout.activity_main);
         initTabLayout();
         initToolbar();
-        initSetting();
-//        boolean z = hasAppCompatAttr(this);
-//        Utils.logi("hasAppCompatAttr = " + z);
-//        //int defStyleWebView = (int) Utils.sget_object(Initiator.load("com.android.internal.R$attr"), "webViewStyle");
-//        // LinearLayout ll = new LinearLayout(this, null, defStyleWebView, 0);
-//        new WebView(this);
-//        MainHook.injectModuleResources(getResources());
-//        z = hasAppCompatAttr(this);
-//        Utils.logi("hasAppCompatAttr = " + z);
-    }
-
-    public static boolean hasAppCompatAttr(Context ctx) {
-        TypedArray a = ctx.obtainStyledAttributes(R.styleable.AppCompatTheme);
-        boolean hasVal = a.hasValue(R.styleable.AppCompatTheme_windowActionBar);
-        a.recycle();
-        return hasVal;
     }
 
     private void initTabLayout() {
-        //if (getIntent().getBooleanExtra(INTENT_LAUNCH, false)) {
         mFragments.add(new MainuiPreferenceFragment());
         mFragments.add(new SidebarPreferenceFragment());
         mFragments.add(new ChatPreferenceFragment());
         mFragments.add(new TroopPreferenceFragment());
         mFragments.add(new ExtensionPreferenceFragment());
-        //} else {
         mFragments.add(new ReadmeFragment());
-        //}
         mFragments.add(new SettingPreferenceFragment());
         mFragments.add(new AboutPreferenceFragment());
 
@@ -93,27 +83,9 @@ public class MainActivity extends AppCompatTransferActivity implements ViewPager
         updateTitle(0);
     }
 
-    private void initSetting() {
-        try {
-            Setting.init(this);
-        } catch (Exception e) {
-            e.printStackTrace();
-            Toast.makeText(this, e.getMessage(), Toast.LENGTH_LONG).show();
-        }
-    }
-
     private void updateTitle(int position) {
         String actionBarTitle = mFragments.get(position).getToolbarTitle();
         mTitleTextView.setText(actionBarTitle);
-    }
-
-    @Override
-    public void onBackPressed() {
-        Intent intent = new Intent();
-        // 返回修改时间判断是否需要重启QQ
-        intent.putExtra(KEY_LAST_MODIFIED, Setting.getLong(KEY_LAST_MODIFIED, System.currentTimeMillis()));
-        setResult(Activity.RESULT_OK, intent);
-        finish();
     }
 
     @Override
@@ -149,6 +121,7 @@ public class MainActivity extends AppCompatTransferActivity implements ViewPager
     }
 
     public interface TabFragment {
+
         String getTabTitle();
 
         String getToolbarTitle();

@@ -1,52 +1,44 @@
-/* QNotified - An Xposed module for QQ/TIM
- * Copyright (C) 2019-2020 xenonhydride@gmail.com
- * https://github.com/cinit/QNotified
+/*
+ * QNotified - An Xposed module for QQ/TIM
+ * Copyright (C) 2019-2021 dmca@ioctl.cc
+ * https://github.com/ferredoxin/QNotified
  *
- * This software is free software: you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
+ * This software is non-free but opensource software: you can redistribute it
+ * and/or modify it under the terms of the GNU Affero General Public License
  * as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
+ * version 3 of the License, or any later version and our eula as published
+ * by ferredoxin.
  *
  * This software is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
+ * Affero General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this software.  If not, see
- * <https://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU Affero General Public License
+ * and eula along with this software.  If not, see
+ * <https://www.gnu.org/licenses/>
+ * <https://github.com/ferredoxin/QNotified/blob/master/LICENSE.md>.
  */
 package nil.nadph.qnotified.config;
 
-import nil.nadph.qnotified.util.Nullable;
-
+import androidx.annotation.Nullable;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.Serializable;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.NoSuchElementException;
+
 
 public class Table<K> implements Serializable, Cloneable {
 
     public static final Object VOID_INSTANCE;
-
-    static {
-        Object tmp = null;
-        try {
-            Method m = Class.class.getMethod("getDeclaredConstructor", Class[].class);
-            Constructor<Void> c = (Constructor<Void>) m.invoke(Void.class, new Object[]{new Class[0]});
-            c.setAccessible(true);
-            tmp = c.newInstance();
-        } catch (Exception e) {
-            //**sigh**
-            e.printStackTrace();
-            tmp = new Object();
-        }
-        VOID_INSTANCE = tmp;
-        //assert VOID_INSTANCE != null;
-    }
+    public static final byte TYPE_VOID = 0;//should NOT have value
 
     /* New format!!
      * LE
@@ -57,8 +49,6 @@ public class Table<K> implements Serializable, Cloneable {
      * 00   000000   00000008
      * type reserved length
      */
-
-    public static final byte TYPE_VOID = 0;//should NOT have value
     public static final byte TYPE_BYTE = 1;
     public static final byte TYPE_BOOL = 2;
     public static final byte TYPE_WCHAR32 = 3;
@@ -67,13 +57,13 @@ public class Table<K> implements Serializable, Cloneable {
     public static final byte TYPE_LONG = 6;
     public static final byte TYPE_FLOAT = 7;
     public static final byte TYPE_DOUBLE = 8;
-
     public static final byte TYPE_IRAW = 9;
     public static final byte TYPE_IUTF8 = 10;
     public static final byte TYPE_IUTF32 = 11;
     /**
-     * B_TABLE ISTR_table_name [ I_len_types(fields.len) I_len_data(records.len) B_key_type ISTR_key_name (B_field_type I_STR_name)... (B_type_K(THIS-IS-IMPORTANTA!) index (B_type val)...)... ]
-     * B_type  ISTR_name       val
+     * B_TABLE ISTR_table_name [ I_len_types(fields.len) I_len_data(records.len) B_key_type
+     * ISTR_key_name (B_field_type I_STR_name)... (B_type_K(THIS-IS-IMPORTANTA!) index (B_type
+     * val)...)... ] B_type  ISTR_name       val
      */
     public static final byte TYPE_TABLE = 16;
     /**
@@ -81,9 +71,23 @@ public class Table<K> implements Serializable, Cloneable {
      **/
     public static final byte TYPE_ARRAY = 17;
     public static final byte TYPE_MAP = 18;
-
     public static final byte TYPE_EOF = (byte) 0xFF;//oh,no...it's terrible!
 
+    static {
+        Object tmp = null;
+        try {
+            Method m = Class.class.getMethod("getDeclaredConstructor", Class[].class);
+            Constructor<Void> c = (Constructor<Void>) m
+                .invoke(Void.class, new Object[]{new Class[0]});
+            c.setAccessible(true);
+            tmp = c.newInstance();
+        } catch (Exception e) {
+            //**sigh**
+            e.printStackTrace();
+            tmp = new Object();
+        }
+        VOID_INSTANCE = tmp;
+    }
 
     public HashMap<K, Object[]> records;
     public String[] fields;
@@ -100,7 +104,6 @@ public class Table<K> implements Serializable, Cloneable {
         byte[] buf = new byte[len];
         in.readFully(buf, 0, len);
         throw new RuntimeException("Stub!");
-        //return buf;
     }
 
     public static byte[] readIRaw(DataInputStream in) throws IOException {
@@ -129,7 +132,6 @@ public class Table<K> implements Serializable, Cloneable {
         int _f = in.readInt(), _r = in.readInt();
         table.fields = new String[_f];
         table.types = new byte[_f];
-        //table.records=new HashMap(_r);
         int i, ii;
         Object fn;
         Object[] recval;
@@ -186,7 +188,8 @@ public class Table<K> implements Serializable, Cloneable {
                     case TYPE_EOF:
                         break a;
                     default:
-                        throw new IOException("Unexpected type:" + table.types[i] + ",record_name:\"" + fn + "\"");
+                        throw new IOException(
+                            "Unexpected type:" + table.types[i] + ",record_name:\"" + fn + "\"");
                 }
             }
             table.records.put(fn, recval);
@@ -230,7 +233,8 @@ public class Table<K> implements Serializable, Cloneable {
         }
     }
 
-    public static void writeTypeAndObj(DataOutputStream out, byte rtype, Object obj) throws IOException {
+    public static void writeTypeAndObj(DataOutputStream out, byte rtype, Object obj)
+        throws IOException {
         out.write(rtype);
         switch (rtype) {
             case TYPE_VOID:
@@ -274,7 +278,8 @@ public class Table<K> implements Serializable, Cloneable {
         }
     }
 
-    public static void writeRecord(DataOutputStream out, @Nullable String key, Object val) throws IOException {
+    public static void writeRecord(DataOutputStream out, @Nullable String key, Object val)
+        throws IOException {
         byte type;
         try {
             Class clz = val.getClass();
@@ -392,8 +397,9 @@ public class Table<K> implements Serializable, Cloneable {
 
     public int getFieldId(String name) {
         for (int i = 0; i < fields.length; i++) {
-            if (name.equals(fields[i]))
+            if (name.equals(fields[i])) {
                 return i;
+            }
         }
         return -1;
     }
@@ -404,16 +410,24 @@ public class Table<K> implements Serializable, Cloneable {
 
     public Object get(K key, String field) throws NoSuchFieldException {
         int i = getFieldId(field);
-        if (i < 0) throw new NoSuchFieldException(field);
-        if (!hasRecord(key)) throw new NoSuchElementException("key:" + key);
+        if (i < 0) {
+            throw new NoSuchFieldException(field);
+        }
+        if (!hasRecord(key)) {
+            throw new NoSuchElementException("key:" + key);
+        }
         return records.get(key)[i];
     }
 
     public void set(K key, String field, Serializable val) throws NoSuchFieldException {
         synchronized (this) {
             int i = getFieldId(field);
-            if (i < 0) throw new NoSuchFieldException(field);
-            if (!hasRecord(key)) throw new NoSuchElementException("key:" + key);
+            if (i < 0) {
+                throw new NoSuchFieldException(field);
+            }
+            if (!hasRecord(key)) {
+                throw new NoSuchElementException("key:" + key);
+            }
 
             records.get(key)[i] = val;
         }
@@ -421,7 +435,9 @@ public class Table<K> implements Serializable, Cloneable {
 
     public void insert(K key) {
         synchronized (this) {
-            if (hasRecord(key)) return;
+            if (hasRecord(key)) {
+                return;
+            }
             Object[] rec = new Object[fields.length];
             records.put(key, rec);
         }
@@ -435,8 +451,12 @@ public class Table<K> implements Serializable, Cloneable {
 
     public boolean addField(String field, byte type) {
         synchronized (this) {
-            if (getFieldId(field) >= 0) return true;
-            if (field == null) return false;
+            if (getFieldId(field) >= 0) {
+                return true;
+            }
+            if (field == null) {
+                return false;
+            }
             String[] _f = new String[fields.length + 1];
             byte[] _t = new byte[fields.length + 1];
             System.arraycopy(fields, 0, _f, 0, fields.length);
@@ -461,11 +481,21 @@ public class Table<K> implements Serializable, Cloneable {
 
     public void init() {
         synchronized (this) {
-            if (records == null) records = new HashMap<>();
-            if (fields == null) fields = new String[0];
-            if (types == null) types = new byte[0];
-            if (keyName == null) keyName = "id";
-            if (keyType == 0) keyType = TYPE_INT;
+            if (records == null) {
+                records = new HashMap<>();
+            }
+            if (fields == null) {
+                fields = new String[0];
+            }
+            if (types == null) {
+                types = new byte[0];
+            }
+            if (keyName == null) {
+                keyName = "id";
+            }
+            if (keyType == 0) {
+                keyType = TYPE_INT;
+            }
         }
     }
 }
